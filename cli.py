@@ -179,20 +179,115 @@ def meta(scan_json, output, fmt, meta_json):
 @cli.command()
 @click.argument("scan_json", type=click.Path(exists=True))
 @click.option("--output-dir", "-o", default="portfolio", show_default=True)
-@click.option("--title", "-t", default="My Media Portfolio", show_default=True)
+@click.option("--title", "-t", default="My Media Portfolio", show_default=True,
+              help="単一ページモード時のページタイトル")
 @click.option("--thumb-dir", default=None,
               help="サムネイル画像ディレクトリ (processed/thumbnail など)")
-def portfolio(scan_json, output_dir, title, thumb_dir):
-    """HTML ポートフォリオを生成する"""
-    from media_monetize.portfolio import generate_portfolio
+# ---- マルチページサイト生成オプション ----
+@click.option("--multi-page", is_flag=True, default=False,
+              help="マルチページのフォトグラファーサイトを生成する")
+@click.option("--site-name", default="My Portfolio", show_default=True,
+              help="サイト名（ナビ・フッターに表示）")
+@click.option("--photographer", default="Photographer", show_default=True,
+              help="撮影者名")
+@click.option("--location", default="Japan", show_default=True,
+              help="活動拠点")
+@click.option("--tagline", default="写真でひとの心を動かす。", show_default=True,
+              help="ヒーローセクションのキャッチコピー")
+@click.option("--contact-email", default="contact@example.com", show_default=True,
+              help="コンタクト用メールアドレス")
+@click.option("--title-tag", default=None,
+              help="SEOタイトルタグ（省略時は --site-name を使用）")
+@click.option("--description", default="", help="SEOメタディスクリプション")
+@click.option("--keywords", default="", help="SEOキーワード（カンマ区切り）")
+@click.option("--generate-privacy/--no-privacy", default=True, show_default=True,
+              help="プライバシーポリシーページを自動生成する")
+def portfolio(scan_json, output_dir, title, thumb_dir,
+              multi_page, site_name, photographer, location,
+              tagline, contact_email, title_tag, description,
+              keywords, generate_privacy):
+    """HTML ポートフォリオを生成する
 
+    \b
+    単一ページモード（デフォルト）:
+      python cli.py portfolio scan_results.json --thumb-dir ./processed/thumbnail
+
+    \b
+    マルチページサイト生成モード:
+      python cli.py portfolio scan_results.json \\
+        --multi-page \\
+        --site-name "emoeedesign" \\
+        --photographer "和也 / Kazuya" \\
+        --location "東京・埼玉" \\
+        --tagline "舞台・企業・アーティスト写真をワンストップで。" \\
+        --contact-email "contact@emoeedesign.com" \\
+        --title-tag "フォトグラファー 和也 | 舞台・企業・アーティスト撮影 | 東京・埼玉"
+    """
     with open(scan_json, encoding="utf-8") as f:
         records = json.load(f)
 
     console.rule("[bold cyan]ポートフォリオ生成")
-    index = generate_portfolio(records, output_dir, title, thumb_dir=thumb_dir)
-    console.print(f"[green]完了[/green]: {index}")
+
+    if multi_page:
+        from media_monetize.portfolio import generate_site
+        generated = generate_site(
+            records, output_dir,
+            site_name=site_name,
+            photographer=photographer,
+            location=location,
+            tagline=tagline,
+            contact_email=contact_email,
+            title_tag=title_tag,
+            description=description,
+            keywords=keywords,
+            generate_privacy=generate_privacy,
+            thumb_dir=thumb_dir,
+        )
+        console.print(f"[green]マルチページサイト生成完了[/green]  ({len(generated)} ページ)")
+        for key, path in generated.items():
+            console.print(f"  [cyan]{key:10}[/cyan] {path}")
+        index = generated.get("index", Path(output_dir) / "index.html")
+    else:
+        from media_monetize.portfolio import generate_portfolio
+        index = generate_portfolio(records, output_dir, title, thumb_dir=thumb_dir)
+        console.print(f"[green]完了[/green]: {index}")
+
     console.print(f"  ブラウザで開く: [bold]open {index}[/bold]  (macOS) / [bold]xdg-open {index}[/bold]  (Linux)")
+
+
+# ---------------------------------------------------------------------------
+# market
+# ---------------------------------------------------------------------------
+@cli.command()
+@click.option("--genre", "-g", multiple=True,
+              type=click.Choice(["ice_climbing", "juhyo_winter", "onsen_lifestyle", "all"]),
+              default=["all"], show_default=True,
+              help="表示するジャンル（複数指定可）")
+@click.option("--scan-json", default=None, type=click.Path(exists=True),
+              help="スキャン結果 JSON（指定時はファイル数を市場分析に含める）")
+def market(genre, scan_json):
+    """ジャンル別ストック写真市場分析レポートを表示する
+
+    \b
+    使用例:
+      python cli.py market --genre ice_climbing
+      python cli.py market --genre juhyo_winter --genre onsen_lifestyle
+      python cli.py market  # 全ジャンル表示
+    """
+    from media_monetize.market_report import print_market_report
+
+    records = None
+    if scan_json:
+        with open(scan_json, encoding="utf-8") as f:
+            records = json.load(f)
+
+    genres_list = (
+        ["ice_climbing", "juhyo_winter", "onsen_lifestyle"]
+        if "all" in genre else list(genre)
+    )
+
+    console.rule("[bold cyan]ストック写真 市場分析レポート")
+    print_market_report(scan_records=records, genres=genres_list, console=console)
 
 
 # ---------------------------------------------------------------------------

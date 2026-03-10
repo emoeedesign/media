@@ -184,6 +184,80 @@ MAJOR_STOCK_SITES = [
 ]
 
 
+# ---- ジャンル別キーワードテンプレート -----------------------------------------------
+
+GENRE_KEYWORD_TEMPLATES: dict[str, dict] = {
+    "ice_climbing": {
+        "en": [
+            "ice climbing", "frozen waterfall", "winter mountaineering",
+            "extreme sports", "alpinism", "ice axe", "crampon",
+            "Japan winter", "adventure", "alpine climbing",
+        ],
+        "ja": [
+            "アイスクライミング", "凍瀑", "冬山", "登山",
+            "アルパインクライミング", "冬山登山", "極限スポーツ",
+        ],
+        "category": "Sports",
+        "recommended_platforms": ["Getty Images / iStock", "Shutterstock", "Adobe Stock"],
+        "model_release": True,
+        "note": "人物が認識可能な場合はモデルリリース必須",
+    },
+    "juhyo_winter": {
+        "en": [
+            "juhyo", "snow monsters", "Zao", "Japan winter", "ski resort",
+            "snowshoe", "mountain panorama", "winter landscape",
+            "frost trees", "inbound travel Japan",
+        ],
+        "ja": [
+            "樹氷", "蔵王", "山形", "冬景色", "スノーシュー",
+            "雪山", "日本の冬", "絶景", "スキーリゾート",
+        ],
+        "category": "Nature",
+        "recommended_platforms": ["PIXTA", "Getty Images / iStock", "Adobe Stock"],
+        "model_release": False,
+        "note": "後ろ姿のみの人物はリリース不要のケースが多いが要確認",
+    },
+    "onsen_lifestyle": {
+        "en": [
+            "Japan winter", "onsen town", "hot spring", "steam", "snowy stream",
+            "backlight", "lens flare", "travel lifestyle",
+            "man in snow", "Japanese culture",
+        ],
+        "ja": [
+            "温泉", "雪景色", "冬の旅行", "湯煙", "逆光",
+            "日本の冬", "ライフスタイル", "温泉街", "旅行",
+        ],
+        "category": "Travel",
+        "recommended_platforms": ["Adobe Stock", "PIXTA", "Shutterstock"],
+        "model_release": True,
+        "note": "人物が画面中央・認識可能なためモデルリリース必須",
+    },
+}
+
+_GENRE_FILENAME_HINTS: dict[str, list[str]] = {
+    "ice_climbing": ["ice", "climb", "frozen", "waterfall", "axe", "crampon"],
+    "juhyo_winter": ["juhyo", "snow", "zao", "frost", "monster", "snowshoe", "ski"],
+    "onsen_lifestyle": ["onsen", "hotspring", "steam", "lifestyle", "travel"],
+}
+
+
+def suggest_genre(filename: str) -> str | None:
+    """
+    ファイル名からジャンルを推定する。
+
+    Args:
+        filename: 元のファイル名（例: "ice_axe_photo.jpg"）
+
+    Returns:
+        マッチしたジャンルキー、または None
+    """
+    lower = filename.lower()
+    for genre, hints in _GENRE_FILENAME_HINTS.items():
+        if any(hint in lower for hint in hints):
+            return genre
+    return None
+
+
 def monetization_report(scan_records: list[dict]) -> dict:
     """スキャン結果からマネタイズ可能性レポートを生成する。"""
     photos = [r for r in scan_records if r.get("type") == "photo"]

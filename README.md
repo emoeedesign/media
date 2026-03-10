@@ -13,6 +13,8 @@
 | **リサイズ** | ストックサイト納品用・Web用など目的別にリサイズ |
 | **メタデータ管理** | Shutterstock / Adobe Stock / PIXTA 向け CSV を生成 |
 | **HTMLポートフォリオ** | ブラウザで確認できる一覧ページを自動生成 |
+| **マルチページサイト生成** ⭐ | CTA・SEO・プライバシーポリシー・モバイル対応の完全サイトを生成 |
+| **市場分析レポート** ⭐ | ジャンル別（樹氷・アイスクライミング等）の市場データ・キーワードを表示 |
 
 ## インストール
 
@@ -96,6 +98,72 @@ python cli.py portfolio scan_results.json \
 ]
 ```
 
+## マルチページサイト生成 ⭐
+
+ローカル写真からコンバージョン最適化済みの完全なフォトグラファーサイトを生成します。
+
+**生成されるファイル構成:**
+
+```
+portfolio/
+├── index.html          # トップページ（ヒーロー・CTA・各セクション・コンタクトフォーム）
+├── portfolio.html      # ポートフォリオ一覧（モバイル2列グリッド対応）
+├── works/
+│   └── index.html      # ワークス一覧（カテゴリフィルター付き）
+├── privacy.html        # プライバシーポリシー（自動生成）
+└── thumbs/             # サムネイル画像
+```
+
+**主な特徴（emoeedesign.com 分析に基づく改善点を反映）:**
+
+| 改善点 | 対応内容 |
+|---|---|
+| ファーストビューにCTAがない | ヒーローセクションに「撮影を相談する →」ボタンを追加 |
+| プライバシーポリシーが空白 | `--generate-privacy` で内容付きページを自動生成 |
+| 各ページ末尾にCTAがない | ポートフォリオ・ワークス末尾にCTAブロックを自動挿入 |
+| スマホでグリッドが崩れる | `repeat(auto-fill, minmax(280px, 1fr))` で2列対応 |
+| フォームに撮影種別がない | 撮影種別セレクト（舞台/企業/アーティスト/Web/その他）を追加 |
+| SEOタイトルが英語のみ | `--title-tag` で日本語キーワード入りタイトルを設定可能 |
+
+```bash
+# 基本的なマルチページサイト生成
+python cli.py portfolio scan_results.json \
+  --multi-page \
+  --thumb-dir ./processed/thumbnail \
+  --site-name "emoeedesign" \
+  --photographer "和也 / Kazuya" \
+  --location "東京・埼玉" \
+  --tagline "舞台・企業・アーティスト写真をワンストップで。" \
+  --contact-email "contact@emoeedesign.com" \
+  --title-tag "フォトグラファー 和也 | 舞台・企業・アーティスト撮影 | 東京・埼玉" \
+  --generate-privacy
+```
+
+## 市場分析レポート ⭐
+
+ジャンル別の市場規模・推奨プラットフォーム・キーワードを表示します。
+
+```bash
+# 全ジャンル表示
+python cli.py market
+
+# 特定ジャンルのみ
+python cli.py market --genre ice_climbing
+python cli.py market --genre juhyo_winter
+python cli.py market --genre onsen_lifestyle
+
+# 複数ジャンル指定
+python cli.py market --genre ice_climbing --genre juhyo_winter
+```
+
+**対応ジャンル:**
+
+| ジャンルキー | 内容 | 主要市場 |
+|---|---|---|
+| `ice_climbing` | アイスクライミング・凍瀑 | Getty Images, Shutterstock |
+| `juhyo_winter` | 樹氷・山頂パノラマ（蔵王等） | PIXTA, Getty Images |
+| `onsen_lifestyle` | 温泉街・冬の渓流（人物・逆光） | Adobe Stock, PIXTA |
+
 ## 販売のポイント
 
 1. **写真は最低 4MP** — ノイズが少なく鮮明なものを選ぶ
@@ -116,6 +184,18 @@ monetize_output/
 ├── metadata/
 │   └── template.json          # 編集用メタデータテンプレート
 └── portfolio/
-    ├── index.html             # HTMLポートフォリオ
+    ├── index.html             # HTMLポートフォリオ（単一ページモード）
     └── thumbs/                # ポートフォリオ用サムネイル
+```
+
+マルチページサイト生成（`--multi-page`）後のディレクトリ構成:
+
+```
+portfolio/
+├── index.html                 # トップページ（ヒーロー・CTA・コンタクトフォーム）
+├── portfolio.html             # ポートフォリオ一覧（モバイル2列グリッド）
+├── works/
+│   └── index.html             # ワークス一覧（カテゴリフィルター）
+├── privacy.html               # プライバシーポリシー（自動生成）
+└── thumbs/                    # サムネイル画像
 ```

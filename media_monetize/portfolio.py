@@ -1,5 +1,6 @@
 """
 Portfolio Generator - ローカル写真・動画の販売ポートフォリオ HTML を生成する
+マルチページサイト生成・CTA・プライバシーポリシー・SEOメタタグ対応
 """
 
 from __future__ import annotations
@@ -137,6 +138,439 @@ _PLATFORM_CARD_TEMPLATE = """\
         <a href="{url}" target="_blank" rel="noopener">{url}</a>
       </div>"""
 
+# ---------------------------------------------------------------------------
+# Multi-page site templates
+# ---------------------------------------------------------------------------
+
+_SITE_CSS = """
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif;
+           background: #0d0d14; color: #e8e8e8; }
+
+    /* ---- Nav ---- */
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+          display: flex; align-items: center; justify-content: space-between;
+          padding: .8rem 3rem; background: rgba(13,13,20,.9);
+          backdrop-filter: blur(8px); border-bottom: 1px solid #1e1e2e; }
+    nav .logo { font-size: 1rem; font-weight: 400; letter-spacing: .15em;
+                color: #c9a84c; text-decoration: none; }
+    nav ul { list-style: none; margin: 0; padding: 0;
+             display: flex; gap: 2rem; }
+    nav ul li a { color: #ccc; text-decoration: none; font-size: .82rem;
+                  letter-spacing: .1em; text-transform: uppercase;
+                  transition: color .2s; }
+    nav ul li a:hover { color: #c9a84c; }
+
+    /* ---- Hero ---- */
+    .hero { min-height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+            padding: 6rem 2rem 4rem;
+            background: linear-gradient(160deg, #0d0d14 0%, #1a1a2e 60%, #0d0d14 100%); }
+    .hero h1 { font-size: clamp(1.6rem, 4vw, 3rem); font-weight: 300;
+               letter-spacing: .08em; line-height: 1.45; margin: 0 0 1.2rem;
+               max-width: 800px; }
+    .hero p { color: #888; font-size: 1rem; margin: 0 0 2.5rem; }
+    .cta-button { display: inline-block; padding: .8rem 2.2rem;
+                  background: #c9a84c; color: #0d0d14; border-radius: 30px;
+                  text-decoration: none; font-size: .9rem; font-weight: 600;
+                  letter-spacing: .08em; transition: opacity .2s; }
+    .cta-button:hover { opacity: .85; }
+    .cta-button-outline { background: transparent; border: 1px solid #c9a84c;
+                          color: #c9a84c; }
+    .cta-button-outline:hover { background: #c9a84c; color: #0d0d14; opacity: 1; }
+
+    /* ---- Section ---- */
+    section { padding: 5rem 3rem; }
+    section h2 { font-size: 1.6rem; font-weight: 300; letter-spacing: .12em;
+                 text-transform: uppercase; margin: 0 0 2.5rem;
+                 color: #c9a84c; }
+
+    /* ---- Portfolio grid ---- */
+    .portfolio-grid { display: grid;
+                      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                      gap: 1rem; }
+    .portfolio-grid img { width: 100%; aspect-ratio: 3/2; object-fit: cover;
+                          display: block; border-radius: 4px;
+                          transition: opacity .3s; }
+    .portfolio-grid img:hover { opacity: .8; }
+
+    /* ---- CTA block ---- */
+    .cta-block { margin-top: 3rem; padding: 2.5rem; background: #141420;
+                 border: 1px solid #2a2a3e; border-radius: 8px;
+                 text-align: center; }
+    .cta-block p { margin: 0 0 1.2rem; color: #aaa; font-size: .95rem; }
+
+    /* ---- Works list ---- */
+    .works-filters { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .works-filters button { background: #1a1a2e; border: 1px solid #2a2a3e;
+                            color: #ccc; padding: .4rem 1rem; border-radius: 20px;
+                            cursor: pointer; font-size: .82rem; transition: all .2s; }
+    .works-filters button.active,
+    .works-filters button:hover { background: #c9a84c; border-color: #c9a84c; color: #000; }
+    .works-list { display: flex; flex-direction: column; gap: .8rem; }
+    .works-item { display: flex; align-items: center; gap: 1.5rem;
+                  padding: 1rem 1.2rem; background: #141420;
+                  border: 1px solid #2a2a3e; border-radius: 6px;
+                  text-decoration: none; color: inherit; transition: border-color .2s; }
+    .works-item:hover { border-color: #c9a84c; }
+    .works-item .year { color: #c9a84c; font-size: .82rem;
+                        min-width: 3.5rem; text-align: right; }
+    .works-item .category { font-size: .75rem; padding: .15rem .5rem;
+                            background: #1e1e2e; border-radius: 4px; color: #888; }
+    .works-item h3 { margin: 0; font-size: .95rem; font-weight: 400; flex: 1; }
+
+    /* ---- Contact form ---- */
+    .contact-form { max-width: 600px; }
+    .form-group { margin-bottom: 1.2rem; }
+    .form-group label { display: block; font-size: .82rem; color: #888;
+                        margin-bottom: .4rem; letter-spacing: .05em; }
+    .form-group input,
+    .form-group select,
+    .form-group textarea { width: 100%; padding: .7rem 1rem;
+                           background: #141420; border: 1px solid #2a2a3e;
+                           border-radius: 6px; color: #e8e8e8; font-size: .9rem;
+                           transition: border-color .2s; }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { outline: none; border-color: #c9a84c; }
+    .form-group select option { background: #141420; }
+    .form-group textarea { min-height: 120px; resize: vertical; }
+    .form-note { font-size: .78rem; color: #666; margin-top: .4rem; }
+
+    /* ---- About ---- */
+    .about-inner { display: grid; grid-template-columns: 1fr 2fr; gap: 3rem;
+                   align-items: start; max-width: 900px; }
+    .about-stats { display: flex; flex-direction: column; gap: 1.2rem; }
+    .about-stat span { display: block; font-size: 2rem; font-weight: 600;
+                       color: #c9a84c; }
+    .about-stat small { font-size: .78rem; color: #666; }
+    .about-text p { color: #aaa; line-height: 1.85; margin: 0 0 1rem; }
+    .social-links { display: flex; gap: 1rem; margin-top: 1.2rem; flex-wrap: wrap; }
+    .social-links a { color: #c9a84c; text-decoration: none; font-size: .82rem;
+                      border: 1px solid #2a2a3e; padding: .3rem .8rem;
+                      border-radius: 4px; transition: background .2s; }
+    .social-links a:hover { background: #1a1a2e; }
+
+    /* ---- Privacy ---- */
+    .privacy-content { max-width: 800px; }
+    .privacy-content h2 { font-size: 1.1rem; color: #c9a84c; margin: 2rem 0 .6rem; }
+    .privacy-content p, .privacy-content li { color: #aaa; line-height: 1.85; }
+    .privacy-content ul { padding-left: 1.5rem; }
+
+    /* ---- Footer ---- */
+    footer { text-align: center; padding: 2rem; color: #444; font-size: .78rem;
+             border-top: 1px solid #1e1e2e; }
+    footer a { color: #666; }
+
+    /* ---- Mobile ---- */
+    @media (max-width: 768px) {
+      nav { padding: .8rem 1.2rem; }
+      nav ul { gap: 1rem; }
+      nav ul li a { font-size: .75rem; }
+      section { padding: 4rem 1.2rem; }
+      .portfolio-grid { grid-template-columns: repeat(2, 1fr); gap: .6rem; }
+      .about-inner { grid-template-columns: 1fr; gap: 2rem; }
+      .about-stats { flex-direction: row; flex-wrap: wrap; gap: 1.5rem; }
+    }
+    @media (max-width: 480px) {
+      nav ul { display: none; }
+      .hero h1 { font-size: 1.5rem; }
+      .portfolio-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+"""
+
+_NAV_TEMPLATE = """\
+  <nav>
+    <a class="logo" href="index.html">{site_name}</a>
+    <ul>
+      <li><a href="portfolio.html">Portfolio</a></li>
+      <li><a href="works/index.html">Works</a></li>
+      <li><a href="index.html#about">About</a></li>
+      <li><a href="index.html#contact">Contact</a></li>
+    </ul>
+  </nav>"""
+
+_SEO_META_TEMPLATE = """\
+  <title>{title_tag}</title>
+  <meta name="description" content="{description}" />
+  <meta name="keywords" content="{keywords}" />
+  <meta property="og:title" content="{title_tag}" />
+  <meta property="og:description" content="{description}" />
+  <meta property="og:type" content="website" />"""
+
+_CTA_BLOCK_TEMPLATE = """\
+  <div class="cta-block">
+    <p>{message}</p>
+    <a href="{href}" class="cta-button {extra_cls}">{label}</a>
+  </div>"""
+
+
+def _build_page(*, title_tag: str, description: str, keywords: str,
+                site_name: str, body_html: str, extra_css: str = "") -> str:
+    nav = _NAV_TEMPLATE.format(site_name=site_name)
+    seo = _SEO_META_TEMPLATE.format(
+        title_tag=title_tag,
+        description=description,
+        keywords=keywords,
+    )
+    return f"""\
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+{seo}
+  <style>
+{_SITE_CSS}
+{extra_css}
+  </style>
+</head>
+<body>
+{nav}
+{body_html}
+  <footer>
+    &copy; {datetime.now().year} {site_name} &nbsp;|&nbsp;
+    <a href="privacy.html">プライバシーポリシー</a>
+  </footer>
+</body>
+</html>"""
+
+
+def _build_index(*, site_name: str, photographer: str, location: str,
+                 tagline: str, contact_email: str, title_tag: str,
+                 description: str, keywords: str,
+                 thumb_paths: list[str], scan_records: list[dict]) -> str:
+    # Hero
+    hero_html = f"""\
+  <section class="hero">
+    <h1>{tagline}</h1>
+    <p>{location} — {photographer}</p>
+    <a href="#contact" class="cta-button">撮影を相談する &rarr;</a>
+  </section>"""
+
+    # Portfolio preview (up to 8 images)
+    preview_imgs = "".join(
+        f'    <img src="thumbs/{p}" alt="portfolio" loading="lazy" />\n'
+        for p in thumb_paths[:8]
+    ) if thumb_paths else '    <p style="color:#666">（サムネイルなし）</p>\n'
+
+    portfolio_section = f"""\
+  <section id="portfolio">
+    <h2>Portfolio</h2>
+    <div class="portfolio-grid">
+{preview_imgs}    </div>
+    <div class="cta-block">
+      <p>作品一覧はこちらからご覧いただけます</p>
+      <a href="portfolio.html" class="cta-button cta-button-outline">VIEW ALL &rarr;</a>
+    </div>
+  </section>"""
+
+    # Works preview
+    works_items = ""
+    for r in scan_records[:3]:
+        name = r.get("filename", "")
+        works_items += f'    <div class="works-item"><h3>{name}</h3></div>\n'
+    works_section = f"""\
+  <section id="works">
+    <h2>Works</h2>
+    <div class="works-list">
+{works_items}    </div>
+    <div class="cta-block">
+      <p>制作実績の詳細はWorksページをご覧ください</p>
+      <a href="works/index.html" class="cta-button cta-button-outline">VIEW ALL &rarr;</a>
+    </div>
+  </section>"""
+
+    # About
+    about_section = f"""\
+  <section id="about">
+    <h2>About</h2>
+    <div class="about-inner">
+      <div class="about-stats">
+      </div>
+      <div class="about-text">
+        <p>{photographer} — {location}を拠点に活動するフォトグラファー。<br />
+           撮影・Web制作・ディレクションをワンストップで対応。</p>
+      </div>
+    </div>
+  </section>"""
+
+    # Contact
+    contact_section = f"""\
+  <section id="contact">
+    <h2>Contact</h2>
+    <form class="contact-form" action="https://formspree.io/f/placeholder" method="POST">
+      <div class="form-group">
+        <label for="name">お名前 / Name <span style="color:#c9a84c">*</span></label>
+        <input type="text" id="name" name="name" required placeholder="山田 太郎" />
+      </div>
+      <div class="form-group">
+        <label for="email">メールアドレス / Email <span style="color:#c9a84c">*</span></label>
+        <input type="email" id="email" name="email" required placeholder="example@email.com" />
+      </div>
+      <div class="form-group">
+        <label for="shooting_type">撮影種別 / Shooting Type</label>
+        <select id="shooting_type" name="shooting_type">
+          <option value="">選択してください</option>
+          <option value="stage">舞台撮影</option>
+          <option value="corporate">企業・コーポレート</option>
+          <option value="artist">アーティスト・ポートレート</option>
+          <option value="web">Web制作</option>
+          <option value="other">その他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="message">メッセージ / Message</label>
+        <textarea id="message" name="message" placeholder="ご依頼内容・ご質問をご記入ください"></textarea>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+          <input type="checkbox" name="privacy" required />
+          <span><a href="privacy.html" style="color:#c9a84c">プライバシーポリシー</a>に同意して送信する</span>
+        </label>
+      </div>
+      <button type="submit" class="cta-button" style="border:none;cursor:pointer">Send &rarr;</button>
+    </form>
+  </section>"""
+
+    body = "\n".join([hero_html, portfolio_section, works_section,
+                      about_section, contact_section])
+    return _build_page(
+        title_tag=title_tag,
+        description=description,
+        keywords=keywords,
+        site_name=site_name,
+        body_html=body,
+    )
+
+
+def _build_portfolio_page(*, site_name: str, photographer: str,
+                          title_tag: str, description: str, keywords: str,
+                          thumb_paths: list[str], scan_records: list[dict]) -> str:
+    imgs = "".join(
+        f'    <img src="../thumbs/{p}" alt="portfolio" loading="lazy" />\n'
+        for p in thumb_paths
+    ) if thumb_paths else '    <p style="color:#666;padding:1rem">（サムネイルなし）</p>\n'
+
+    body = f"""\
+  <section style="padding-top:7rem">
+    <h2>Portfolio</h2>
+    <div class="portfolio-grid">
+{imgs}    </div>
+    <div class="cta-block">
+      <p>この作品のような撮影をご希望の方はお気軽にご相談ください</p>
+      <a href="../index.html#contact" class="cta-button">CONTACT &rarr;</a>
+    </div>
+  </section>"""
+    return _build_page(
+        title_tag=title_tag,
+        description=description,
+        keywords=keywords,
+        site_name=site_name,
+        body_html=body,
+    )
+
+
+def _build_works_page(*, site_name: str, title_tag: str, description: str,
+                      keywords: str, scan_records: list[dict]) -> str:
+    items_html = ""
+    for r in scan_records:
+        name = r.get("filename", "")
+        rtype = r.get("type", "photo")
+        cat_label = "写真" if rtype == "photo" else "動画"
+        items_html += (
+            f'    <div class="works-item" data-cat="{rtype}">\n'
+            f'      <span class="year">—</span>\n'
+            f'      <h3>{name}</h3>\n'
+            f'      <span class="category">{cat_label}</span>\n'
+            f'    </div>\n'
+        )
+
+    body = f"""\
+  <section style="padding-top:7rem">
+    <h2>Works</h2>
+    <div class="works-filters">
+      <button class="active" onclick="filterWorks('all',this)">All</button>
+      <button onclick="filterWorks('photo',this)">写真</button>
+      <button onclick="filterWorks('video',this)">動画</button>
+    </div>
+    <div class="works-list" id="works-list">
+{items_html}    </div>
+    <div class="cta-block">
+      <p>制作のご依頼・撮影のご相談はお気軽にどうぞ</p>
+      <a href="../index.html#contact" class="cta-button">CONTACT &rarr;</a>
+    </div>
+  </section>
+  <script>
+    function filterWorks(cat, btn) {{
+      document.querySelectorAll('.works-filters button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.works-item').forEach(item => {{
+        item.style.display = (cat === 'all' || item.dataset.cat === cat) ? '' : 'none';
+      }});
+    }}
+  </script>"""
+    return _build_page(
+        title_tag=title_tag,
+        description=description,
+        keywords=keywords,
+        site_name=site_name,
+        body_html=body,
+    )
+
+
+def _build_privacy_page(*, site_name: str, photographer: str,
+                        contact_email: str, title_tag: str) -> str:
+    today = datetime.now().strftime("%Y年%m月%d日")
+    body = f"""\
+  <section style="padding-top:7rem">
+    <h2>プライバシーポリシー</h2>
+    <div class="privacy-content">
+      <p>{site_name}（以下「当サイト」）は、お問い合わせフォームを通じて取得する
+         個人情報の取り扱いについて、以下のとおり定めます。</p>
+
+      <h2>1. 収集する個人情報</h2>
+      <p>当サイトでは、お問い合わせの際に以下の情報をご提供いただく場合があります。</p>
+      <ul>
+        <li>お名前</li>
+        <li>メールアドレス</li>
+        <li>お問い合わせ内容（撮影種別・メッセージ）</li>
+      </ul>
+
+      <h2>2. 利用目的</h2>
+      <p>取得した個人情報は、以下の目的にのみ使用します。</p>
+      <ul>
+        <li>お問い合わせへの返信・対応</li>
+        <li>撮影依頼に関する見積り・日程調整</li>
+      </ul>
+
+      <h2>3. 第三者への提供</h2>
+      <p>取得した個人情報は、法令に基づく場合を除き、本人の同意なく第三者に提供することはありません。</p>
+
+      <h2>4. 個人情報の管理</h2>
+      <p>個人情報への不正アクセス・紛失・漏洩を防止するため、適切な安全対策を講じます。</p>
+
+      <h2>5. お問い合わせ先</h2>
+      <p>個人情報の取り扱いに関するご質問は下記までご連絡ください。</p>
+      <p>管理責任者：{photographer}<br />
+         Email：<a href="mailto:{contact_email}" style="color:#c9a84c">{contact_email}</a></p>
+
+      <h2>6. 制定日</h2>
+      <p>{today}</p>
+    </div>
+  </section>"""
+    return _build_page(
+        title_tag=f"プライバシーポリシー | {site_name}",
+        description=f"{site_name}のプライバシーポリシーです。",
+        keywords="プライバシーポリシー",
+        site_name=site_name,
+        body_html=body,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
 def _card_for(record: dict, thumb_rel: str | None) -> str:
     rtype = record.get("type", "photo")
@@ -236,3 +670,129 @@ def generate_portfolio(
     index = output_dir / "index.html"
     index.write_text(html, encoding="utf-8")
     return index
+
+
+def generate_site(
+    scan_records: list[dict],
+    output_dir: str | Path,
+    *,
+    site_name: str = "My Portfolio",
+    photographer: str = "Photographer",
+    location: str = "Japan",
+    tagline: str = "写真でひとの心を動かす。",
+    contact_email: str = "contact@example.com",
+    title_tag: str | None = None,
+    description: str = "",
+    keywords: str = "",
+    generate_privacy: bool = True,
+    thumb_dir: str | Path | None = None,
+) -> dict[str, Path]:
+    """
+    スキャン結果から完全なマルチページポートフォリオサイトを生成する。
+
+    生成されるファイル:
+        output_dir/
+        ├── index.html          トップページ（ヒーロー・各セクション・コンタクトフォーム）
+        ├── portfolio.html      ポートフォリオ一覧（2列グリッド・モバイル対応）
+        ├── works/
+        │   └── index.html      ワークス一覧（カテゴリフィルター付き）
+        ├── privacy.html        プライバシーポリシー（generate_privacy=True の場合）
+        └── thumbs/             サムネイル画像
+
+    Args:
+        scan_records:     scanner.scan_to_json() の結果リスト
+        output_dir:       サイトの出力先ディレクトリ
+        site_name:        サイト名（ナビ・フッターに表示）
+        photographer:     撮影者名
+        location:         活動拠点
+        tagline:          ヒーローセクションのキャッチコピー
+        contact_email:    コンタクト用メールアドレス（プライバシーポリシーにも記載）
+        title_tag:        SEOタイトルタグ（省略時は site_name を使用）
+        description:      SEO メタディスクリプション
+        keywords:         SEO キーワード（カンマ区切り）
+        generate_privacy: True の場合 privacy.html を生成する
+        thumb_dir:        サムネイル画像ディレクトリ
+
+    Returns:
+        生成したファイルパスの dict {"index": Path, "portfolio": Path, ...}
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    works_dir = output_dir / "works"
+    works_dir.mkdir(exist_ok=True)
+
+    if title_tag is None:
+        title_tag = site_name
+    if not description:
+        description = f"{photographer} — {location}を拠点に活動するフォトグラファー。{tagline}"
+    if not keywords:
+        keywords = f"{photographer}, フォトグラファー, 写真家, {location}, photography"
+
+    # サムネイルをコピー
+    thumb_names: list[str] = []
+    if thumb_dir:
+        thumb_dir = Path(thumb_dir)
+        thumbs_out = output_dir / "thumbs"
+        thumbs_out.mkdir(exist_ok=True)
+        for img in sorted(thumb_dir.glob("*.jpg")):
+            shutil.copy2(img, thumbs_out / img.name)
+            thumb_names.append(img.name)
+
+    generated: dict[str, Path] = {}
+
+    # index.html
+    index_html = _build_index(
+        site_name=site_name,
+        photographer=photographer,
+        location=location,
+        tagline=tagline,
+        contact_email=contact_email,
+        title_tag=title_tag,
+        description=description,
+        keywords=keywords,
+        thumb_paths=thumb_names,
+        scan_records=scan_records,
+    )
+    index_path = output_dir / "index.html"
+    index_path.write_text(index_html, encoding="utf-8")
+    generated["index"] = index_path
+
+    # portfolio.html
+    portfolio_html = _build_portfolio_page(
+        site_name=site_name,
+        photographer=photographer,
+        title_tag=f"ポートフォリオ | {site_name}",
+        description=f"{photographer}の作品一覧です。",
+        keywords=keywords,
+        thumb_paths=thumb_names,
+        scan_records=scan_records,
+    )
+    portfolio_path = output_dir / "portfolio.html"
+    portfolio_path.write_text(portfolio_html, encoding="utf-8")
+    generated["portfolio"] = portfolio_path
+
+    # works/index.html
+    works_html = _build_works_page(
+        site_name=site_name,
+        title_tag=f"制作実績 | {site_name}",
+        description=f"{photographer}の制作実績一覧です。",
+        keywords=keywords,
+        scan_records=scan_records,
+    )
+    works_path = works_dir / "index.html"
+    works_path.write_text(works_html, encoding="utf-8")
+    generated["works"] = works_path
+
+    # privacy.html
+    if generate_privacy:
+        privacy_html = _build_privacy_page(
+            site_name=site_name,
+            photographer=photographer,
+            contact_email=contact_email,
+            title_tag=title_tag,
+        )
+        privacy_path = output_dir / "privacy.html"
+        privacy_path.write_text(privacy_html, encoding="utf-8")
+        generated["privacy"] = privacy_path
+
+    return generated
