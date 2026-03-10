@@ -152,20 +152,40 @@ def save_metadata_json(items: list[MediaMeta], path: str | Path) -> None:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def generate_template_from_scan(scan_records: list[dict], output: str | Path) -> list[MediaMeta]:
+def generate_template_from_scan(
+    scan_records: list[dict],
+    output: str | Path,
+    auto_genre: bool = False,
+    force_genre: str | None = None,
+) -> list[MediaMeta]:
     """
     スキャン結果からメタデータテンプレートを生成して JSON に保存する。
-    タイトル・説明・キーワードは空欄なので手動編集が必要。
+
+    Args:
+        scan_records: scan_to_json() の出力
+        output: 保存先 JSON パス
+        auto_genre: True のとき、ファイル名からジャンルを推定してキーワードを自動付与
+        force_genre: このジャンルを全ファイルに強制適用（auto_genre より優先）
     """
     items = []
     for r in scan_records:
         if not r.get("sellable", False):
             continue
+
+        genre = force_genre or (suggest_genre(r["filename"]) if auto_genre else None)
+        tmpl = GENRE_KEYWORD_TEMPLATES.get(genre, {}) if genre else {}
+
+        keywords: list[str] = tmpl.get("en", []) + tmpl.get("ja", [])
+        category: str = tmpl.get("category", "")
+        model_release: bool = tmpl.get("model_release", False)
+
         items.append(MediaMeta(
             filename=r["filename"],
             title="",
             description="",
-            keywords=[],
+            keywords=keywords,
+            category=category,
+            model_release=model_release,
             copyright_notice="© " + r.get("camera", "").split()[0] if r.get("camera") else "",
         ))
     save_metadata_json(items, output)

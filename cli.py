@@ -141,11 +141,30 @@ def process(scan_json, output_dir, presets, watermark):
               default="all", show_default=True)
 @click.option("--meta-json", default=None,
               help="編集済みメタデータ JSON (未指定時はテンプレートのみ生成)")
-def meta(scan_json, output, fmt, meta_json):
-    """メタデータテンプレートを生成 / ストックサイト用 CSV をエクスポート"""
+@click.option("--auto-genre", is_flag=True, default=False,
+              help="ファイル名からジャンルを自動推定してキーワードを付与する")
+@click.option("--genre", default=None,
+              type=click.Choice(["ice_climbing", "juhyo_winter", "onsen_lifestyle"]),
+              help="全ファイルに適用するジャンルを指定（--auto-genre より優先）")
+def meta(scan_json, output, fmt, meta_json, auto_genre, genre):
+    """メタデータテンプレートを生成 / ストックサイト用 CSV をエクスポート
+
+    \b
+    基本的な使い方:
+      python cli.py meta scan_results.json
+
+    \b
+    ジャンル自動検出（ファイル名からキーワードを推定）:
+      python cli.py meta scan_results.json --auto-genre
+
+    \b
+    ジャンルを固定（全ファイルに同じキーワードを付与）:
+      python cli.py meta scan_results.json --genre juhyo_winter
+    """
     from media_monetize.metadata import (
         generate_template_from_scan, load_metadata_json,
         export_shutterstock_csv, export_adobe_stock_csv, export_pixta_csv,
+        GENRE_KEYWORD_TEMPLATES,
     )
 
     with open(scan_json, encoding="utf-8") as f:
@@ -154,9 +173,30 @@ def meta(scan_json, output, fmt, meta_json):
     console.rule("[bold cyan]メタデータ処理")
 
     if meta_json is None:
-        items = generate_template_from_scan(records, output)
+        items = generate_template_from_scan(
+            records, output,
+            auto_genre=auto_genre,
+            force_genre=genre,
+        )
         console.print(f"[green]テンプレート生成完了[/green]: {len(items)} 件 → {output}")
-        console.print("[yellow]ヒント[/yellow]: JSON を編集してタイトル・キーワードを記入してください")
+
+        if genre or auto_genre:
+            genres_applied = {}
+            for item in items:
+                g = genre or "auto"
+                genres_applied.setdefault(g, 0)
+                genres_applied[g] += 1
+            auto_count = sum(1 for item in items if item.keywords)
+            console.print(f"  [cyan]キーワード自動付与[/cyan]: {auto_count}/{len(items)} 件")
+            if genre and genre in GENRE_KEYWORD_TEMPLATES:
+                tmpl = GENRE_KEYWORD_TEMPLATES[genre]
+                kw_count = len(tmpl.get("en", [])) + len(tmpl.get("ja", []))
+                console.print(f"  ジャンル [bold]{genre}[/bold]: {kw_count} キーワード / 件")
+                if tmpl.get("model_release"):
+                    console.print(f"  [yellow]⚠[/yellow]  model_release = True が設定されました（人物撮影の場合は書類を取得してください）")
+        else:
+            console.print("[yellow]ヒント[/yellow]: JSON を編集してタイトル・キーワードを記入してください")
+            console.print("  ジャンル自動検出を使う場合は [bold]--auto-genre[/bold] を追加してください")
         return
 
     items = load_metadata_json(meta_json)
