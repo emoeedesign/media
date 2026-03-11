@@ -292,7 +292,10 @@ def portfolio(scan_json, output_dir, title, thumb_dir,
         index = generate_portfolio(records, output_dir, title, thumb_dir=thumb_dir)
         console.print(f"[green]完了[/green]: {index}")
 
-    console.print(f"  ブラウザで開く: [bold]open {index}[/bold]  (macOS) / [bold]xdg-open {index}[/bold]  (Linux)")
+    abs_index = Path(index).resolve()
+    console.print(f"  ブラウザで開く: [bold]file://{abs_index}[/bold]")
+    console.print(f"  macOS:  [dim]open {abs_index}[/dim]")
+    console.print(f"  Linux:  [dim]xdg-open {abs_index}[/dim]")
 
 
 # ---------------------------------------------------------------------------
@@ -440,13 +443,15 @@ def run_all(media_dir, output_dir, title, watermark,
             f"\n\n[dim]マルチページサイトを生成するには --multi-page を追加してください[/dim]"
         )
 
+    abs_index = Path(index).resolve()
     console.print()
     console.print(Panel(
         f"[green bold]すべての処理が完了しました![/green bold]\n\n"
         f"  スキャン結果:  {scan_json}\n"
         f"  処理済み写真:  {processed}\n"
         f"  メタデータ:    {out / 'metadata' / 'template.json'}\n"
-        f"  ポートフォリオ: {index}\n\n"
+        f"  ポートフォリオ: {abs_index}\n\n"
+        f"  ブラウザで開く: [bold]file://{abs_index}[/bold]\n\n"
         f"[yellow]次のステップ:[/yellow]\n"
         + next_steps,
         title="[bold]完了", border_style="green"
