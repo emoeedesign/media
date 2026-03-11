@@ -173,6 +173,25 @@ python cli.py market --genre ice_climbing --genre juhyo_winter
 5. **建物・ブランド品** が映る場合はプロパティリリースが必要
 6. **キーワードは英語＋日本語両方** を 10〜50 個が目安
 
+## ワンストップ実行（run-all）
+
+スキャン・処理・メタデータ生成・ポートフォリオ生成をまとめて実行します。
+
+```bash
+# 単一ページモード（デフォルト）
+python cli.py run-all ./my_photos
+
+# マルチページサイト生成モード
+python cli.py run-all ./my_photos \
+  --multi-page \
+  --site-name "emoeedesign" \
+  --photographer "和也 / Kazuya" \
+  --location "東京・埼玉" \
+  --tagline "舞台・企業・アーティスト写真をワンストップで。" \
+  --contact-email "contact@emoeedesign.com" \
+  --title-tag "フォトグラファー 和也 | 舞台・企業・アーティスト撮影 | 東京・埼玉"
+```
+
 ## ディレクトリ構成（run-all 実行後）
 
 ```

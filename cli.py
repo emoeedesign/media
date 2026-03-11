@@ -338,12 +338,45 @@ def market(genre, scan_json):
 @click.option("--output-dir", "-o", default="monetize_output", show_default=True)
 @click.option("--title", "-t", default="My Media Portfolio", show_default=True)
 @click.option("--watermark", "-w", default="© PREVIEW", show_default=True)
-def run_all(media_dir, output_dir, title, watermark):
-    """スキャン→レポート→処理→ポートフォリオをまとめて実行する"""
+# ---- マルチページサイト生成オプション ----
+@click.option("--multi-page", is_flag=True, default=False,
+              help="マルチページのフォトグラファーサイトを生成する")
+@click.option("--site-name", default=None,
+              help="サイト名（省略時は --title を使用）")
+@click.option("--photographer", default="Photographer", show_default=True,
+              help="撮影者名")
+@click.option("--location", default="Japan", show_default=True,
+              help="活動拠点")
+@click.option("--tagline", default="写真でひとの心を動かす。", show_default=True,
+              help="ヒーローセクションのキャッチコピー")
+@click.option("--contact-email", default="contact@example.com", show_default=True,
+              help="コンタクト用メールアドレス")
+@click.option("--title-tag", default=None,
+              help="SEOタイトルタグ（省略時は --site-name を使用）")
+@click.option("--generate-privacy/--no-privacy", default=True, show_default=True,
+              help="プライバシーポリシーページを自動生成する")
+def run_all(media_dir, output_dir, title, watermark,
+            multi_page, site_name, photographer, location,
+            tagline, contact_email, title_tag, generate_privacy):
+    """スキャン→レポート→処理→ポートフォリオをまとめて実行する
+
+    \b
+    単一ページモード（デフォルト）:
+      python cli.py run-all ./my_photos
+
+    \b
+    マルチページサイト生成モード:
+      python cli.py run-all ./my_photos \\
+        --multi-page \\
+        --site-name "emoeedesign" \\
+        --photographer "和也 / Kazuya" \\
+        --location "東京・埼玉" \\
+        --tagline "舞台・企業・アーティスト写真をワンストップで。" \\
+        --contact-email "contact@emoeedesign.com"
+    """
     from media_monetize.scanner import scan_to_json
     from media_monetize.metadata import monetization_report, generate_template_from_scan
     from media_monetize.processor import batch_process_photos
-    from media_monetize.portfolio import generate_portfolio
 
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -372,10 +405,40 @@ def run_all(media_dir, output_dir, title, watermark):
     console.rule("[bold cyan]Step 4/4: メタデータテンプレート + ポートフォリオ")
     generate_template_from_scan(records, out / "metadata" / "template.json")
     thumb_dir = processed / "thumbnail"
-    index = generate_portfolio(
-        records, out / "portfolio", title,
-        thumb_dir=thumb_dir if thumb_dir.exists() else None,
+
+    if multi_page:
+        from media_monetize.portfolio import generate_site
+        generated = generate_site(
+            records, out / "portfolio",
+            site_name=site_name or title,
+            photographer=photographer,
+            location=location,
+            tagline=tagline,
+            contact_email=contact_email,
+            title_tag=title_tag,
+            generate_privacy=generate_privacy,
+            thumb_dir=thumb_dir if thumb_dir.exists() else None,
+        )
+        index = generated.get("index", out / "portfolio" / "index.html")
+        console.print(f"[green]マルチページサイト生成完了[/green] ({len(generated)} ページ)")
+        for key, path in generated.items():
+            console.print(f"  [cyan]{key:10}[/cyan] {path}")
+    else:
+        from media_monetize.portfolio import generate_portfolio
+        index = generate_portfolio(
+            records, out / "portfolio", title,
+            thumb_dir=thumb_dir if thumb_dir.exists() else None,
+        )
+
+    next_steps = (
+        f"  1. metadata/template.json を編集してタイトル・キーワードを記入\n"
+        f"  2. python cli.py meta {scan_json} --meta-json metadata/template.json\n"
+        f"  3. 生成された CSV を各ストックサイトへアップロード"
     )
+    if not multi_page:
+        next_steps += (
+            f"\n\n[dim]マルチページサイトを生成するには --multi-page を追加してください[/dim]"
+        )
 
     console.print()
     console.print(Panel(
@@ -385,9 +448,7 @@ def run_all(media_dir, output_dir, title, watermark):
         f"  メタデータ:    {out / 'metadata' / 'template.json'}\n"
         f"  ポートフォリオ: {index}\n\n"
         f"[yellow]次のステップ:[/yellow]\n"
-        f"  1. metadata/template.json を編集してタイトル・キーワードを記入\n"
-        f"  2. python cli.py meta scan_results.json --meta-json metadata/template.json\n"
-        f"  3. 生成された CSV を各ストックサイトへアップロード",
+        + next_steps,
         title="[bold]完了", border_style="green"
     ))
 
