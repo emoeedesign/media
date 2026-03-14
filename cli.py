@@ -12,7 +12,10 @@ Media Monetize CLI
   python cli.py run-all ./my_photos --output-dir ./out
 """
 
+import http.server
 import json
+import os
+import socket
 import sys
 from pathlib import Path
 
@@ -296,6 +299,91 @@ def portfolio(scan_json, output_dir, title, thumb_dir,
     console.print(f"  ブラウザで開く: [bold]file://{abs_index}[/bold]")
     console.print(f"  macOS:  [dim]open {abs_index}[/dim]")
     console.print(f"  Linux:  [dim]xdg-open {abs_index}[/dim]")
+
+
+# ---------------------------------------------------------------------------
+# serve
+# ---------------------------------------------------------------------------
+def _is_in_container() -> bool:
+    """Docker / コンテナ環境かどうかを判定する"""
+    return os.path.exists("/.dockerenv") or os.path.exists("/run/.containerenv")
+
+
+@cli.command()
+@click.argument("site_dir", type=click.Path(exists=True), default="portfolio")
+@click.option("--port", "-p", default=8080, show_default=True, help="使用ポート番号")
+@click.option("--allow-network", is_flag=True, default=False,
+              help="コンテナ使用時など、LAN全体に公開する (0.0.0.0 にバインド)")
+def serve(site_dir, port, allow_network):
+    """生成したポートフォリオを HTTP サーバーでプレビューする
+
+    \b
+    通常使用（localhost のみ・セキュア）:
+      python cli.py serve ./portfolio
+
+    \b
+    Docker コンテナ内で使用（ポートフォワード対応）:
+      python cli.py serve ./portfolio --allow-network
+      # ホスト側: docker run -p 8080:8080 ...
+
+    \b
+    ポート変更:
+      python cli.py serve ./portfolio --port 3000
+    """
+    in_container = _is_in_container()
+
+    if allow_network or in_container:
+        host = "0.0.0.0"
+        if not allow_network and in_container:
+            console.print(
+                "[yellow]コンテナ環境を検出しました。"
+                "ポートフォワードのため 0.0.0.0 にバインドします。[/yellow]"
+            )
+    else:
+        host = "127.0.0.1"
+
+    site_path = Path(site_dir).resolve()
+    class _QuietHandler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=str(site_path), **kwargs)
+
+        def log_message(self, fmt, *args):  # noqa: N802
+            console.print(f"  [dim]{self.address_string()} - {fmt % args}[/dim]")
+
+    try:
+        with http.server.HTTPServer((host, port), _QuietHandler) as httpd:
+            display_host = "localhost" if host == "127.0.0.1" else _get_local_ip()
+            url = f"http://{display_host}:{port}"
+
+            console.rule("[bold cyan]プレビューサーバー起動")
+            console.print(f"  サイト:  [bold]{site_path}[/bold]")
+            console.print(f"  URL:     [bold green]{url}[/bold green]")
+            if host == "0.0.0.0":
+                console.print(
+                    f"  [yellow]注意:[/yellow] LAN 内のすべてのデバイスからアクセス可能です。"
+                    "信頼できるネットワークでのみ使用してください。"
+                )
+            else:
+                console.print("  [green]セキュア:[/green] このマシンの localhost のみアクセス可能")
+            console.print("  停止:    Ctrl+C")
+            console.print()
+            httpd.serve_forever()
+    except OSError as e:
+        console.print(f"[red]サーバー起動エラー:[/red] {e}")
+        console.print(f"  ポート {port} が使用中の可能性があります。--port で別のポートを指定してください。")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]サーバーを停止しました。[/yellow]")
+
+
+def _get_local_ip() -> str:
+    """ローカル IP アドレスを取得する（取得失敗時は localhost を返す）"""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+    except OSError:
+        return "localhost"
 
 
 # ---------------------------------------------------------------------------

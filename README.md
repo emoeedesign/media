@@ -13,6 +13,7 @@
 | **リサイズ** | ストックサイト納品用・Web用など目的別にリサイズ |
 | **メタデータ管理** | Shutterstock / Adobe Stock / PIXTA 向け CSV を生成 |
 | **HTMLポートフォリオ** | ブラウザで確認できる一覧ページを自動生成 |
+| **プレビューサーバー** ⭐ | localhost 限定の HTTP サーバーでポートフォリオを安全にプレビュー |
 | **マルチページサイト生成** ⭐ | CTA・SEO・プライバシーポリシー・モバイル対応の完全サイトを生成 |
 | **市場分析レポート** ⭐ | ジャンル別（樹氷・アイスクライミング等）の市場データ・キーワードを表示 |
 
@@ -28,9 +29,9 @@ pip install -r requirements.txt
 # ワンストップ実行（スキャン→処理→ポートフォリオ生成）
 python cli.py run-all ./my_photos --output-dir ./out --title "My Portfolio"
 
-# ポートフォリオを開く
-open ./out/portfolio/index.html       # macOS
-xdg-open ./out/portfolio/index.html   # Linux
+# ポートフォリオをブラウザでプレビュー（セキュアな localhost サーバー）
+python cli.py serve ./out/portfolio
+# → http://localhost:8080 をブラウザで開く
 ```
 
 ## 個別コマンド
@@ -60,6 +61,12 @@ python cli.py meta scan_results.json \
 python cli.py portfolio scan_results.json \
   --output-dir ./portfolio \
   --thumb-dir ./processed/thumbnail
+
+# 7. ポートフォリオをプレビュー（localhost:8080 で安全に確認）
+python cli.py serve ./portfolio
+
+# Docker コンテナ内から使う場合（コンテナは自動検出）
+#   docker run -p 8080:8080 ... python cli.py serve ./portfolio
 ```
 
 ## プリセット一覧
