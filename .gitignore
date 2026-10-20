@@ -7,3 +7,5 @@ dist/
 build/
 preview_site/
 monetize_output/
+out/
+.DS_Store
